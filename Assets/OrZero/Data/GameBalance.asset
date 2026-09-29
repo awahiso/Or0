@@ -1,0 +1,23 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1e7e5f965666f274bb27e9d9040d2154, type: 3}
+  m_Name: GameBalance
+  m_EditorClassIdentifier: OrZero.Runtime::OrZero.GameBalanceData
+  maxSameAnswerStreak: 4
+  inputLockSeconds: 0.08
+  startSeconds: 60
+  maxSeconds: 99.99
+  extendInterval: 3
+  extendSeconds: 1
+  basePoint: 100
+  speedBonusMax: 100
+  speedBonusWindowSeconds: 1
