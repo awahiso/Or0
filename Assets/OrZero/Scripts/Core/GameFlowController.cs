@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 using UnityEngine.InputSystem;
 
 namespace OrZero
@@ -7,7 +8,8 @@ namespace OrZero
     /// Game シーンの進行を enum のステートで管理するクラス（SPEC §1.2）。
     /// ステートを持つのはこのクラスだけで、UI は表示と入力の通知だけを受け持つ。
     /// いまは Playing（出題・回答）・Miss（不正解）・TimeUp（時間切れ）を使う。
-    /// 回答はボタン（マウス）とキーボード（0キー／テンキーの0＝数字、Oキー＝英字）の両方で受け付ける
+    /// 回答はボタン（マウス）とキーボード（0キー／テンキーの0＝数字、Oキー＝英字）の両方で受け付ける。
+    /// 出題の見た目は、起動時に Resources から読み込んだスタイルから毎問ランダムに選ぶ（SPEC §1.4）
     /// </summary>
     public class GameFlowController : MonoBehaviour
     {
@@ -16,23 +18,29 @@ namespace OrZero
         [SerializeField] private GlyphView glyphView;            // 画面中央の出題文字
         [SerializeField] private AnswerButton[] answerButtons;   // 回答ボタン（英字用と数字用を1つずつ）
         [SerializeField] private HudView hudView;                // 画面上部の SCORE・TIME・COMBO
+        [SerializeField] private string styleResourcesFolder = "GlyphStyles";   // スタイルを置く Resources の中のフォルダ名（Assets/OrZero/Resources/GlyphStyles）
 
         // ===== 実行時の状態（確認用に Inspector へ表示） =====
         [SerializeField] private GameState currentState = GameState.Playing;      // 現在のステート
         [SerializeField] private AnswerPicker answerPicker = new AnswerPicker();  // 答えの抽選（同じ答えの連続上限つき）
         [SerializeField] private GameTimer gameTimer = new GameTimer();           // 残り時間（秒）
+        [SerializeField] private List<GlyphStyleData> loadedStyles = new List<GlyphStyleData>();   // 起動時に読み込んだスタイル（出題に使うもの）
         [SerializeField] private GlyphType currentAnswer = GlyphType.LetterO;     // いま出している問題の答え
+        [SerializeField] private string currentStyleName = "";                    // いま出している問題のスタイル名
         [SerializeField] private float questionElapsedSeconds;                    // いまの問題を出してからの経過時間（秒）。スピード加点に使う
         [SerializeField] private int correctCount;                                // 正解数（ミスで即終了のため、コンボ数と同じ）
         [SerializeField] private int score;                                       // 現在のスコア（点）
 
+        // 出題内容を作るもの（答えとスタイルを独立に抽選する）。Unity が保存できない型なので SerializeField にしない
+        private QuestionGenerator questionGenerator;
+
         /// <summary>
-        /// 起動時に Inspector の設定漏れを確かめる。漏れがあればこのコンポーネントを止める
+        /// 起動時に Inspector の設定漏れを確かめ、出題スタイルを読み込む。どちらかに問題があればこのコンポーネントを止める
         /// （止めると OnEnable・Start・Update も呼ばれないので、以降のエラーが連鎖しない）
         /// </summary>
         private void Awake()
         {
-            if (!HasValidSettings())
+            if (!HasValidSettings() || !LoadStyles())
             {
                 enabled = false;
             }
@@ -71,10 +79,15 @@ namespace OrZero
         /// </summary>
         private void Start()
         {
+            // ローカル変数は関数の先頭で宣言する
+            System.Random random;   // 答え・スタイル・大きさ・装飾の抽選に使う乱数
+
             // 実行時の状態は、Inspector に残った値に左右されないようにここで必ず設定し直す
             correctCount = 0;
             score = 0;
-            answerPicker.Initialize(balanceData.MaxSameAnswerStreak, new System.Random());
+            random = new System.Random();
+            answerPicker.Initialize(balanceData.MaxSameAnswerStreak, random);
+            questionGenerator = new QuestionGenerator(answerPicker, loadedStyles, random);
             gameTimer.Reset(balanceData.StartSeconds);
 
             // HUD の初期表示
@@ -176,7 +189,7 @@ namespace OrZero
 
                 case GameState.Miss:
                     // リザルト画面（T11）ができるまでは Console に出すだけ
-                    Debug.Log($"GAME OVER（仮）: 正解は {currentAnswer}／正解数 {correctCount}／スコア {score}", this);
+                    Debug.Log($"GAME OVER（仮）: 正解は {currentAnswer}（スタイル「{currentStyleName}」）／正解数 {correctCount}／スコア {score}", this);
                     break;
 
                 case GameState.TimeUp:
@@ -256,9 +269,54 @@ namespace OrZero
         /// </summary>
         private void ShowNextQuestion()
         {
-            currentAnswer = answerPicker.PickNext();
-            glyphView.Show(currentAnswer);
+            // ローカル変数は関数の先頭で宣言する
+            QuestionData question;   // 1問分の出題内容
+
+            question = questionGenerator.Generate();
+            currentAnswer = question.Answer;
+            currentStyleName = question.Style.name;
+            glyphView.Show(question);
             questionElapsedSeconds = 0f;
+        }
+
+        /// <summary>
+        /// Resources のフォルダから出題スタイルをすべて読み込む（フォルダに置くだけで出題に混ざる。SPEC §1.4）。
+        /// 書体がないスタイルと、出やすさが 0 のスタイルは使わない
+        /// </summary>
+        /// <returns>使えるスタイルが1つ以上あれば true</returns>
+        private bool LoadStyles()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            GlyphStyleData[] foundStyles;   // フォルダから見つかったスタイル
+            int i;                          // ループ用の添字
+
+            foundStyles = Resources.LoadAll<GlyphStyleData>(styleResourcesFolder);
+            loadedStyles.Clear();
+            for (i = 0; i < foundStyles.Length; i++)
+            {
+                // 書体がないと表示できないので外す（Inspector でも警告が出ている）
+                if (foundStyles[i].FontAsset == null)
+                {
+                    Debug.LogWarning($"GlyphStyle「{foundStyles[i].name}」は書体が未設定なので、出題に使いません", foundStyles[i]);
+                    continue;
+                }
+
+                // 出やすさが 0 のスタイルは、わざと出さない設定なので外す
+                if (foundStyles[i].Weight <= 0f)
+                {
+                    continue;
+                }
+
+                loadedStyles.Add(foundStyles[i]);
+            }
+
+            if (loadedStyles.Count == 0)
+            {
+                Debug.LogError($"GameFlowController: 出題に使えるスタイルが1つもありません（Assets/OrZero/Resources/{styleResourcesFolder}/ に、書体を設定した Glyph Style を置いてください）", this);
+                return false;
+            }
+
+            return true;
         }
 
         /// <summary>
