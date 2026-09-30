@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using TMPro;
+using UnityEngine.SceneManagement;
 
 namespace OrZero
 {
@@ -19,6 +21,8 @@ namespace OrZero
         [SerializeField] private AnswerButton[] answerButtons;   // 回答ボタン（英字用と数字用を1つずつ）
         [SerializeField] private HudView hudView;                // 画面上部の SCORE・TIME・COMBO
         [SerializeField] private string styleResourcesFolder = "GlyphStyles";   // スタイルを置く Resources の中のフォルダ名（Assets/OrZero/Resources/GlyphStyles）
+        [SerializeField] private TMP_Text txtMessege;
+        [SerializeField] private TMP_Text txtReturn;
 
         // ===== 実行時の状態（確認用に Inspector へ表示） =====
         [SerializeField] private GameState currentState = GameState.Playing;      // 現在のステート
@@ -95,6 +99,9 @@ namespace OrZero
             hudView.ShowCombo(correctCount);
             hudView.ShowTime(gameTimer.RemainingSeconds);
 
+            txtMessege.text = "";
+            txtReturn.text = "";
+
             // カウントダウン（T9）ができるまでは、すぐに出題から始める
             ChangeState(GameState.Playing);
         }
@@ -110,9 +117,30 @@ namespace OrZero
                     UpdatePlaying();
                     break;
 
+                case GameState.Miss:
+                    if (Input.GetKeyDown(KeyCode.Return))
+                    {
+                        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                    }
+                    
+                    break;
+
+                case GameState.TimeUp:
+                    if (Input.GetKeyDown(KeyCode.Return))
+                    {
+                        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+                    }
+                        
+                    break;
+
                 default:
                     // Playing 以外のステートには、まだ毎フレームの処理がない
                     break;
+            }
+
+            if (Input.GetKeyDown(KeyCode.Escape))
+            {
+                Application.Quit();
             }
         }
 
@@ -190,11 +218,15 @@ namespace OrZero
                 case GameState.Miss:
                     // リザルト画面（T11）ができるまでは Console に出すだけ
                     Debug.Log($"GAME OVER（仮）: 正解は {currentAnswer}（スタイル「{currentStyleName}」）／正解数 {correctCount}／スコア {score}", this);
+                    txtMessege.text = "GAME OVER";
+                    txtReturn.text = "ENTER TO RETRY";
                     break;
 
                 case GameState.TimeUp:
                     // リザルト画面（T11）ができるまでは Console に出すだけ
                     Debug.Log($"TIME UP（仮）: 正解数 {correctCount}／スコア {score}", this);
+                    txtMessege.text = "TIME UP";
+                    txtReturn.text = "ENTER TO RETRY";
                     break;
 
                 default:
