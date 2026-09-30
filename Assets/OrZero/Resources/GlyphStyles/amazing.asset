@@ -10,10 +10,10 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 3321d1ddc3bd7fd41a2b52e297104aa0, type: 3}
-  m_Name: ninaroman
+  m_Name: amazing
   m_EditorClassIdentifier: OrZero.Runtime::OrZero.GlyphStyleData
   displayName: 
-  fontAsset: {fileID: 11400000, guid: 81787bba26658974fb932338413acb3d, type: 2}
+  fontAsset: {fileID: 11400000, guid: e229be58b43fb01478d5be8d385d6837, type: 2}
   letterText: O
   digitText: 0
   weight: 1
