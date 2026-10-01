@@ -17,6 +17,7 @@ MonoBehaviour:
   letterText: O
   digitText: 0
   weight: 1
+  unlockCorrectCount: 5
   minScale: 1
   maxScale: 1
   faceDilate: 0

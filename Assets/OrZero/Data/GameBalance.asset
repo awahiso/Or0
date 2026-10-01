@@ -21,3 +21,15 @@ MonoBehaviour:
   basePoint: 100
   speedBonusMax: 100
   speedBonusWindowSeconds: 1
+  rankThresholds:
+  - rankName: S
+    minScore: 10000
+  - rankName: A
+    minScore: 6500
+  - rankName: B
+    minScore: 3500
+  - rankName: C
+    minScore: 1500
+  - rankName: D
+    minScore: 0
+  rankingSize: 5
