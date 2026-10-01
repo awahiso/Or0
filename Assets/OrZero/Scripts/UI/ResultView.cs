@@ -21,6 +21,7 @@ namespace OrZero
         [SerializeField] private TMP_Text answerText;           // GAME OVER のときの「あなたの回答／正解」（TIME UP では空にする）
         [SerializeField] private TMP_Text scoreText;            // SCORE の数値
         [SerializeField] private TMP_Text correctCountText;     // 正解数
+        [SerializeField] private TMP_Text tauntText;
         [SerializeField] private TMP_Text rankText;             // RANK（S など）
         [SerializeField] private GameObject newRecordMark;      // NEW RECORD の表示（1位に入ったときだけ出す）
         [SerializeField] private TMP_Text[] rankingRows;        // ランキングの各行（上から1位・2位…の順に並べる）
@@ -29,6 +30,9 @@ namespace OrZero
         // ===== 見た目の設定（Inspector で調整） =====
         [SerializeField] private Color rankingNormalColor = new Color32(0x1F, 0x20, 0x26, 0xFF);      // ランキングの行の文字色（SPEC §1.5 の文字の色）
         [SerializeField] private Color rankingHighlightColor = new Color32(0xFF, 0x4F, 0x9A, 0xFF);   // 今回の記録の行の文字色（SPEC §1.5 のピンク）
+
+        private readonly System.Random random = new System.Random();
+        private string previousTaunt = "";   // 直前に出した煽り（連続で同じ文言を避ける）
 
         /// <summary>RETRY ボタンが押されたときに呼ばれる</summary>
         public event Action RetryPressed;
@@ -66,7 +70,7 @@ namespace OrZero
 
             if (panel == null || headingText == null || answerText == null || scoreText == null
                 || correctCountText == null || rankText == null || newRecordMark == null || retryButton == null
-                || rankingRows == null || rankingRows.Length == 0)
+                || rankingRows == null || rankingRows.Length == 0 || tauntText == null)
             {
                 Debug.LogError("ResultView: panel・各テキスト・newRecordMark・rankingRows・retryButton を Inspector で設定してください", this);
                 return false;
@@ -124,6 +128,16 @@ namespace OrZero
                     rankingRows[i].text = FormatEmptyRankingRow(i + 1);
                 }
                 rankingRows[i].color = i == data.RankingPosition ? rankingHighlightColor : rankingNormalColor;
+            }
+
+            if (data.EndReason == GameEndReason.Miss)
+            {
+                previousTaunt = TauntSelector.ChooseTaunt(data.CorrectAnswer, data.CorrectCount, previousTaunt, random);
+                tauntText.text = previousTaunt;
+            }
+            else
+            {
+                tauntText.text = "";
             }
 
             panel.SetActive(true);
