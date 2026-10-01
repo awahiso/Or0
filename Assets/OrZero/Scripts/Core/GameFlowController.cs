@@ -11,7 +11,7 @@ namespace OrZero
     /// ステートを持つのはこのクラスだけで、UI は表示と入力の通知だけを受け持つ。
     /// いまは Playing（出題・回答）・Miss（不正解）・TimeUp（時間切れ）を使う。
     /// 回答はボタン（マウス）とキーボード（0キー／テンキーの0＝数字、Oキー＝英字）の両方で受け付ける。
-    /// 出題の見た目は、起動時に Resources から読み込んだスタイルから毎問ランダムに選ぶ（SPEC §1.4）
+    /// 出題の見た目は、起動時に Resources から読み込んだスタイルのうち、今の正解数で解禁されているものから毎問ランダムに選ぶ（SPEC §1.4）
     /// </summary>
     public class GameFlowController : MonoBehaviour
     {
@@ -21,8 +21,8 @@ namespace OrZero
         [SerializeField] private AnswerButton[] answerButtons;   // 回答ボタン（英字用と数字用を1つずつ）
         [SerializeField] private HudView hudView;                // 画面上部の SCORE・TIME・COMBO
         [SerializeField] private string styleResourcesFolder = "GlyphStyles";   // スタイルを置く Resources の中のフォルダ名（Assets/OrZero/Resources/GlyphStyles）
-        [SerializeField] private TMP_Text txtMessege;
-        [SerializeField] private TMP_Text txtReturn;
+        [SerializeField] private TMP_Text txtMessege;   // 仮のゲームオーバー表示（GAME OVER／TIME UP）。リザルト画面（T13）で置き換える
+        [SerializeField] private TMP_Text txtReturn;    // 仮のやり直しの案内（ENTER TO RETRY）。リザルト画面（T13）で置き換える
 
         // ===== 実行時の状態（確認用に Inspector へ表示） =====
         [SerializeField] private GameState currentState = GameState.Playing;      // 現在のステート
@@ -102,7 +102,7 @@ namespace OrZero
             txtMessege.text = "";
             txtReturn.text = "";
 
-            // カウントダウン（T9）ができるまでは、すぐに出題から始める
+            // カウントダウン（T11）ができるまでは、すぐに出題から始める
             ChangeState(GameState.Playing);
         }
 
@@ -118,27 +118,57 @@ namespace OrZero
                     break;
 
                 case GameState.Miss:
-                    if (Input.GetKeyDown(KeyCode.Return))
-                    {
-                        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-                    }
-                    
-                    break;
-
                 case GameState.TimeUp:
-                    if (Input.GetKeyDown(KeyCode.Return))
-                    {
-                        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
-                    }
-                        
+                    UpdateRetryWait();
                     break;
 
                 default:
-                    // Playing 以外のステートには、まだ毎フレームの処理がない
+                    // ほかのステート（Countdown・Paused・Result）の毎フレームの処理は、それぞれのタスク（T11・T16・T13）で足す
                     break;
             }
 
-            if (Input.GetKeyDown(KeyCode.Escape))
+            ReadQuitKey();
+        }
+
+        /// <summary>
+        /// ゲームオーバー・時間切れのあと、Enter キー（テンキーの Enter も）で最初からやり直す。
+        /// 仮の操作で、リザルト画面の RETRY（T13）ができたら置き換える
+        /// </summary>
+        private void UpdateRetryWait()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            Keyboard keyboard;   // 接続中のキーボード（無ければ null）
+
+            // ほかのキー入力と同じく Input System で読む（古い Input は、Input System だけの設定だと例外になるため）
+            keyboard = Keyboard.current;
+            if (keyboard == null)
+            {
+                return;
+            }
+
+            if (keyboard.enterKey.wasPressedThisFrame || keyboard.numpadEnterKey.wasPressedThisFrame)
+            {
+                // 今のシーンを読み直してやり直す（Game シーンが Build Profiles の Scene List に入っている必要がある）
+                SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+            }
+        }
+
+        /// <summary>
+        /// Esc キーでアプリを終了する（どのステートでも。Editor では何も起きない）。
+        /// 仮の操作で、SPEC では Esc はポーズ（T16）
+        /// </summary>
+        private void ReadQuitKey()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            Keyboard keyboard;   // 接続中のキーボード（無ければ null）
+
+            keyboard = Keyboard.current;
+            if (keyboard == null)
+            {
+                return;
+            }
+
+            if (keyboard.escapeKey.wasPressedThisFrame)
             {
                 Application.Quit();
             }
@@ -216,21 +246,21 @@ namespace OrZero
                     break;
 
                 case GameState.Miss:
-                    // リザルト画面（T11）ができるまでは Console に出すだけ
+                    // リザルト画面（T13）ができるまでは、Console と仮の表示に出すだけ
                     Debug.Log($"GAME OVER（仮）: 正解は {currentAnswer}（スタイル「{currentStyleName}」）／正解数 {correctCount}／スコア {score}", this);
                     txtMessege.text = "GAME OVER";
                     txtReturn.text = "ENTER TO RETRY";
                     break;
 
                 case GameState.TimeUp:
-                    // リザルト画面（T11）ができるまでは Console に出すだけ
+                    // リザルト画面（T13）ができるまでは、Console と仮の表示に出すだけ
                     Debug.Log($"TIME UP（仮）: 正解数 {correctCount}／スコア {score}", this);
                     txtMessege.text = "TIME UP";
                     txtReturn.text = "ENTER TO RETRY";
                     break;
 
                 default:
-                    // ほかのステートの処理は、それぞれのタスク（T9・T14）で足す
+                    // ほかのステートの処理は、それぞれのタスク（T11・T16）で足す
                     break;
             }
         }
@@ -304,7 +334,8 @@ namespace OrZero
             // ローカル変数は関数の先頭で宣言する
             QuestionData question;   // 1問分の出題内容
 
-            question = questionGenerator.Generate();
+            // 今の正解数で解禁されているスタイルだけから選ぶ（正解を重ねるほど出てくる書体が増える）
+            question = questionGenerator.Generate(correctCount);
             currentAnswer = question.Answer;
             currentStyleName = question.Style.name;
             glyphView.Show(question);
@@ -313,17 +344,20 @@ namespace OrZero
 
         /// <summary>
         /// Resources のフォルダから出題スタイルをすべて読み込む（フォルダに置くだけで出題に混ざる。SPEC §1.4）。
-        /// 書体がないスタイルと、出やすさが 0 のスタイルは使わない
+        /// 書体がないスタイル、出やすさが 0 のスタイル、書体に英字側か数字側の文字がないスタイルは使わない。
+        /// 1問目から出せるスタイル（解禁する正解数が 0）が1つもないと1問目を出せないので、そのときも止める
         /// </summary>
-        /// <returns>使えるスタイルが1つ以上あれば true</returns>
+        /// <returns>使えるスタイルが1つ以上あり、そのうち1問目から出せるものもあれば true</returns>
         private bool LoadStyles()
         {
             // ローカル変数は関数の先頭で宣言する
             GlyphStyleData[] foundStyles;   // フォルダから見つかったスタイル
+            int startStyleCount;            // 1問目から出せるスタイルの数（解禁する正解数が 0 のもの）
             int i;                          // ループ用の添字
 
             foundStyles = Resources.LoadAll<GlyphStyleData>(styleResourcesFolder);
             loadedStyles.Clear();
+            startStyleCount = 0;
             for (i = 0; i < foundStyles.Length; i++)
             {
                 // 書体がないと表示できないので外す（Inspector でも警告が出ている）
@@ -339,12 +373,31 @@ namespace OrZero
                     continue;
                 }
 
+                // 書体に英字側か数字側の文字がないと、その文字だけ別の書体で表示されて答えの手がかりになるので外す
+                if (!foundStyles[i].HasBothGlyphs())
+                {
+                    Debug.LogWarning($"GlyphStyle「{foundStyles[i].name}」は書体に英字側か数字側の文字が入っていないので、出題に使いません（書体を作り直してください）", foundStyles[i]);
+                    continue;
+                }
+
                 loadedStyles.Add(foundStyles[i]);
+
+                // 1問目から出せるスタイルを数える（正解数 0 で解禁されているもの）
+                if (foundStyles[i].UnlockCorrectCount <= 0)
+                {
+                    startStyleCount++;
+                }
             }
 
             if (loadedStyles.Count == 0)
             {
                 Debug.LogError($"GameFlowController: 出題に使えるスタイルが1つもありません（Assets/OrZero/Resources/{styleResourcesFolder}/ に、書体を設定した Glyph Style を置いてください）", this);
+                return false;
+            }
+
+            if (startStyleCount == 0)
+            {
+                Debug.LogError("GameFlowController: 1問目から出せるスタイルがありません（Glyph Style の Unlock Correct Count（解禁する正解数）を 0 にしたものを、1つ以上置いてください）", this);
                 return false;
             }
 
@@ -362,9 +415,10 @@ namespace OrZero
             int digitButtonCount;    // 数字用のボタンの数
             int i;                   // ループ用の添字
 
-            if (balanceData == null || glyphView == null || answerButtons == null || hudView == null)
+            if (balanceData == null || glyphView == null || answerButtons == null || hudView == null
+                || txtMessege == null || txtReturn == null)
             {
-                Debug.LogError("GameFlowController: balanceData・glyphView・answerButtons・hudView を Inspector で設定してください", this);
+                Debug.LogError("GameFlowController: balanceData・glyphView・answerButtons・hudView・txtMessege・txtReturn を Inspector で設定してください", this);
                 return false;
             }
 

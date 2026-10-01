@@ -8,6 +8,7 @@ namespace OrZero
     /// <summary>
     /// 出題スタイル1種類（SPEC §1.4）。1つのスタイルで英字側と数字側の両方を出す。
     /// `Assets/OrZero/Resources/GlyphStyles/` に置くと、起動時に自動で読み込まれる（T9）。
+    /// 「解禁する正解数」で、出題に混ざり始める時期を決められる（正解を重ねるほど出てくる書体が増える。T22）。
     /// 入力ミスと見分けにくさ（英字側と数字側の縦横比の差が 0.05 未満）は、Inspector で値を変えたときに警告する
     /// </summary>
     [CreateAssetMenu(fileName = "GlyphStyle", menuName = "OrZero/Glyph Style")]
@@ -22,6 +23,7 @@ namespace OrZero
         [SerializeField] private string letterText = "O";           // 英字側に表示する文字（1文字）
         [SerializeField] private string digitText = "0";            // 数字側に表示する文字（1文字）
         [SerializeField, Min(0f)] private float weight = 1f;        // 出やすさ（抽選の重み。0 にすると出なくなる）
+        [SerializeField, Min(0)] private int unlockCorrectCount;    // 解禁する正解数（問）。この数だけ正解したあとの問題から出題に混ざる（0 なら1問目から）
 
         // ===== 見た目 =====
         [SerializeField, Min(0.1f)] private float minScale = 1f;         // 大きさの最小倍率（縦横同じ比率で変える）
@@ -45,6 +47,9 @@ namespace OrZero
 
         /// <summary>出やすさ（抽選の重み）</summary>
         public float Weight => weight;
+
+        /// <summary>解禁する正解数（問）。この数だけ正解したあとの問題から出題に混ざる（0 なら1問目から）</summary>
+        public int UnlockCorrectCount => unlockCorrectCount;
 
         /// <summary>大きさの最小倍率</summary>
         public float MinScale => minScale;
@@ -84,6 +89,27 @@ namespace OrZero
         public string GetText(GlyphType answer)
         {
             return answer == GlyphType.LetterO ? letterText : digitText;
+        }
+
+        /// <summary>
+        /// 書体に、英字側と数字側の両方の文字が入っているか（出題に使えるか）。
+        /// 片方でもないと、その文字だけ別の書体で表示されて答えの手がかりになるので、読み込むときに外すのに使う
+        /// </summary>
+        /// <returns>両方の文字が入っていれば true</returns>
+        public bool HasBothGlyphs()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            float width;    // 文字の幅（ここでは使わない）
+            float height;   // 文字の高さ（ここでは使わない）
+
+            // 書体がない、または表示する文字の設定が正しくないときは使えない
+            if (fontAsset == null || FindTextProblems(letterText, digitText).Count > 0)
+            {
+                return false;
+            }
+
+            return TryGetGlyphSize(letterText[0], out width, out height)
+                && TryGetGlyphSize(digitText[0], out width, out height);
         }
 
         /// <summary>

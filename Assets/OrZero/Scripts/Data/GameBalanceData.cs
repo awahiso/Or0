@@ -1,4 +1,5 @@
-﻿using UnityEngine;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 namespace OrZero
 {
@@ -24,6 +25,17 @@ namespace OrZero
         [SerializeField, Min(0)] private int basePoint = 100;                        // 1問正解の基本点（点）
         [SerializeField, Min(0)] private int speedBonusMax = 100;                    // スピード加点の最大（点）。0秒で答えたときの加点
         [SerializeField, Min(0.01f)] private float speedBonusWindowSeconds = 1.0f;   // スピード加点がもらえる猶予（秒）。これより遅いと加点なし
+
+        // ===== ランク（SPEC §1.3） =====
+        // ランクの境目（ランク名と、そのランクになる最低スコア）。並び順は自由。いちばん下のランクは最低スコア 0 にしておく
+        [SerializeField] private RankThreshold[] rankThresholds =
+        {
+            new RankThreshold("S", 10000),
+            new RankThreshold("A", 6500),
+            new RankThreshold("B", 3500),
+            new RankThreshold("C", 1500),
+            new RankThreshold("D", 0),
+        };
 
         /// <summary>同じ答えを続けてよい最大回数（回）</summary>
         public int MaxSameAnswerStreak => maxSameAnswerStreak;
@@ -52,14 +64,43 @@ namespace OrZero
         /// <summary>スピード加点がもらえる猶予（秒）</summary>
         public float SpeedBonusWindowSeconds => speedBonusWindowSeconds;
 
+        /// <summary>ランクの境目（ランク名と最低スコア）</summary>
+        public IReadOnlyList<RankThreshold> RankThresholds => rankThresholds;
+
         /// <summary>
         /// Inspector で値を変えたときに、組み合わせのおかしな設定を警告する（エディタでのみ呼ばれる）
         /// </summary>
         private void OnValidate()
         {
+            // ローカル変数は関数の先頭で宣言する
+            int i;   // ループ用の添字
+            int j;   // 比べる相手の添字
+
             if (startSeconds > maxSeconds)
             {
                 Debug.LogWarning($"GameBalanceData: 開始時の残り時間（{startSeconds}秒）が上限（{maxSeconds}秒）を超えています", this);
+            }
+
+            // ランクの境目: 1つもない・名前が空・最低スコアが同じ（片方のランクに絶対ならない）を警告する
+            if (rankThresholds == null || rankThresholds.Length == 0)
+            {
+                Debug.LogWarning("GameBalanceData: ランクの境目が1つもありません（S〜D などを設定してください）", this);
+                return;
+            }
+            for (i = 0; i < rankThresholds.Length; i++)
+            {
+                if (rankThresholds[i] == null || string.IsNullOrEmpty(rankThresholds[i].RankName))
+                {
+                    Debug.LogWarning($"GameBalanceData: ランクの境目の {i} 番目に、ランク名が入っていません", this);
+                    continue;
+                }
+                for (j = i + 1; j < rankThresholds.Length; j++)
+                {
+                    if (rankThresholds[j] != null && rankThresholds[j].MinScore == rankThresholds[i].MinScore)
+                    {
+                        Debug.LogWarning($"GameBalanceData: ランク「{rankThresholds[i].RankName}」と「{rankThresholds[j].RankName}」の最低スコアが同じ（{rankThresholds[i].MinScore}点）なので、片方には絶対になりません", this);
+                    }
+                }
             }
         }
     }

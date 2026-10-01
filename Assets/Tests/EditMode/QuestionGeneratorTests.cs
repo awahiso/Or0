@@ -8,7 +8,8 @@ namespace OrZero.Tests
 {
     /// <summary>
     /// QuestionGenerator（答えとスタイルの抽選）のテスト（EditMode）
-    /// SPEC §1.4 公平性ルール1「答えの抽選とスタイルの抽選は独立」と、出やすさの重みを確かめる
+    /// SPEC §1.4 公平性ルール1「答えの抽選とスタイルの抽選は独立」と、出やすさの重み、
+    /// 正解数によるスタイルの解禁（T22）を確かめる。解禁を扱わないテストは、正解数 0（1問目）で抽選する
     /// </summary>
     public class QuestionGeneratorTests
     {
@@ -61,7 +62,7 @@ namespace OrZero.Tests
             countA = 0; letterA = 0; countB = 0; letterB = 0;
             for (i = 0; i < DrawCount; i++)
             {
-                question = generator.Generate();
+                question = generator.Generate(0);
                 if (question.Style == styleA)
                 {
                     countA++;
@@ -101,7 +102,7 @@ namespace OrZero.Tests
             heavyCount = 0;
             for (i = 0; i < DrawCount; i++)
             {
-                heavyCount += generator.Generate().Style == heavy ? 1 : 0;
+                heavyCount += generator.Generate(0).Style == heavy ? 1 : 0;
             }
 
             // 確認: 2/3（約0.667）の前後
@@ -129,7 +130,7 @@ namespace OrZero.Tests
             letterCount = 0;
             for (i = 0; i < 100; i++)
             {
-                question = generator.Generate();
+                question = generator.Generate(0);
                 Assert.AreEqual(style, question.Style);
                 letterCount += question.Answer == GlyphType.LetterO ? 1 : 0;
             }
@@ -159,7 +160,7 @@ namespace OrZero.Tests
             largest = float.MinValue;
             for (i = 0; i < 1000; i++)
             {
-                scale = generator.Generate().Scale;
+                scale = generator.Generate(0).Scale;
                 smallest = Math.Min(smallest, scale);
                 largest = Math.Max(largest, scale);
             }
@@ -191,7 +192,7 @@ namespace OrZero.Tests
             // 実行・確認
             for (i = 0; i < 20; i++)
             {
-                question = generator.Generate();
+                question = generator.Generate(0);
                 Assert.AreEqual(question.Answer == GlyphType.LetterO ? "Ｏ" : "０", question.Text);
             }
         }
@@ -232,6 +233,164 @@ namespace OrZero.Tests
         }
 
         /// <summary>
+        /// 解禁する正解数の手前（0〜4問正解）では、そのスタイルは1回も選ばれない
+        /// </summary>
+        [Test]
+        public void Generate_BeforeUnlockCount_NeverPicksLockedStyle()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            GlyphStyleData early;          // 1問目から出るスタイル
+            GlyphStyleData late;           // 5問正解で解禁されるスタイル
+            QuestionGenerator generator;   // テスト対象
+            int lateCount;                 // 解禁前に late が出た回数（0 のはず）
+            int correctCount;              // 抽選するときの正解数
+            int i;                         // ループ用の添字
+
+            // 準備: 出やすさは同じで、late だけ 5問正解で解禁
+            early = CreateStyle(1f, 1f, 1f);
+            late = CreateStyle(1f, 1f, 1f);
+            SetInt(late, "unlockCorrectCount", 5);
+            generator = CreateGenerator(new List<GlyphStyleData> { early, late }, 800);
+
+            // 実行: 正解数 0〜4 で、それぞれ 2000 回ずつ抽選する
+            lateCount = 0;
+            for (correctCount = 0; correctCount < 5; correctCount++)
+            {
+                for (i = 0; i < 2000; i++)
+                {
+                    lateCount += generator.Generate(correctCount).Style == late ? 1 : 0;
+                }
+            }
+
+            // 確認
+            Assert.AreEqual(0, lateCount);
+        }
+
+        /// <summary>
+        /// 解禁する正解数ちょうどで出始め、そこからは出やすさどおりに選ばれる（1:1 ならおおむね半々）
+        /// </summary>
+        [Test]
+        public void Generate_ReachedUnlockCount_PicksByWeight()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            GlyphStyleData early;          // 1問目から出るスタイル
+            GlyphStyleData late;           // 5問正解で解禁されるスタイル
+            QuestionGenerator generator;   // テスト対象
+            int lateCount;                 // late が出た回数
+            int i;                         // ループ用の添字
+
+            // 準備: 出やすさは同じで、late だけ 5問正解で解禁
+            early = CreateStyle(1f, 1f, 1f);
+            late = CreateStyle(1f, 1f, 1f);
+            SetInt(late, "unlockCorrectCount", 5);
+            generator = CreateGenerator(new List<GlyphStyleData> { early, late }, 900);
+
+            // 実行: ちょうど解禁される正解数 5 で抽選する
+            lateCount = 0;
+            for (i = 0; i < DrawCount; i++)
+            {
+                lateCount += generator.Generate(5).Style == late ? 1 : 0;
+            }
+
+            // 確認: 1/2 の前後（47〜53%）
+            Assert.That((double)lateCount / DrawCount, Is.InRange(0.47, 0.53));
+        }
+
+        /// <summary>
+        /// 解禁する正解数が 0・3・6 のスタイルなら、出てくる種類は 1 → 2 → 3 と段階的に増える
+        /// </summary>
+        [Test]
+        public void Generate_DifferentUnlockCounts_KindsIncreaseStepByStep()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            GlyphStyleData first;                // 1問目から出るスタイル
+            GlyphStyleData second;               // 3問正解で解禁されるスタイル
+            GlyphStyleData third;                // 6問正解で解禁されるスタイル
+            QuestionGenerator generator;         // テスト対象
+            int[] checkCounts;                   // 調べる正解数
+            int[] expectedKinds;                 // そのときに出るはずの種類の数
+            HashSet<GlyphStyleData> seenStyles;  // 実際に出たスタイル
+            int k;                               // 調べる正解数の添字
+            int i;                               // ループ用の添字
+
+            // 準備
+            first = CreateStyle(1f, 1f, 1f);
+            second = CreateStyle(1f, 1f, 1f);
+            third = CreateStyle(1f, 1f, 1f);
+            SetInt(second, "unlockCorrectCount", 3);
+            SetInt(third, "unlockCorrectCount", 6);
+            generator = CreateGenerator(new List<GlyphStyleData> { first, second, third }, 1000);
+            checkCounts = new[] { 0, 2, 3, 5, 6, 30 };
+            expectedKinds = new[] { 1, 1, 2, 2, 3, 3 };
+
+            for (k = 0; k < checkCounts.Length; k++)
+            {
+                // 実行: その正解数で 3000 回抽選し、出たスタイルの種類を数える
+                seenStyles = new HashSet<GlyphStyleData>();
+                for (i = 0; i < 3000; i++)
+                {
+                    seenStyles.Add(generator.Generate(checkCounts[k]).Style);
+                }
+
+                // 確認
+                Assert.AreEqual(expectedKinds[k], seenStyles.Count, $"正解数 {checkCounts[k]} のときの種類の数");
+            }
+        }
+
+        /// <summary>
+        /// 1問目から出るスタイル（解禁する正解数が 0）が1つもないと、1問目を出せないので例外になる
+        /// </summary>
+        [Test]
+        public void Constructor_NoStyleUnlockedAtStart_ThrowsArgumentException()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            GlyphStyleData style;   // 3問正解で解禁されるスタイル（これしかない）
+
+            // 準備
+            style = CreateStyle(1f, 1f, 1f);
+            SetInt(style, "unlockCorrectCount", 3);
+
+            // 実行・確認
+            Assert.Throws<ArgumentException>(() => CreateGenerator(new List<GlyphStyleData> { style }, 1100));
+        }
+
+        /// <summary>
+        /// 1問目から出るスタイルが、どれも出やすさ 0 なら、1問目を出せないので例外になる
+        /// （あとで解禁されるスタイルに出やすさがあっても、1問目には使えない）
+        /// </summary>
+        [Test]
+        public void Constructor_StartStylesAllWeightZero_ThrowsArgumentException()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            GlyphStyleData start;   // 1問目から出るが、出やすさ 0 のスタイル
+            GlyphStyleData later;   // 出やすさはあるが、3問正解まで出ないスタイル
+
+            // 準備
+            start = CreateStyle(0f, 1f, 1f);
+            later = CreateStyle(1f, 1f, 1f);
+            SetInt(later, "unlockCorrectCount", 3);
+
+            // 実行・確認
+            Assert.Throws<ArgumentException>(() => CreateGenerator(new List<GlyphStyleData> { start, later }, 1200));
+        }
+
+        /// <summary>
+        /// 正解数がマイナスなのは呼び出し側のミスなので、例外になる
+        /// </summary>
+        [Test]
+        public void Generate_NegativeCorrectCount_ThrowsArgumentOutOfRangeException()
+        {
+            // ローカル変数は関数の先頭で宣言する
+            QuestionGenerator generator;   // テスト対象
+
+            // 準備
+            generator = CreateGenerator(new List<GlyphStyleData> { CreateStyle(1f, 1f, 1f) }, 1300);
+
+            // 実行・確認
+            Assert.Throws<ArgumentOutOfRangeException>(() => generator.Generate(-1));
+        }
+
+        /// <summary>
         /// テスト用のスタイルを作る（出やすさと大きさの範囲だけを設定）
         /// </summary>
         /// <param name="weight">出やすさ</param>
@@ -269,6 +428,22 @@ namespace OrZero.Tests
 
             serialized = new SerializedObject(style);
             serialized.FindProperty(propertyName).stringValue = value;
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+        }
+
+        /// <summary>
+        /// テスト用に、スタイルの整数の設定を書き換える
+        /// </summary>
+        /// <param name="style">書き換えるスタイル</param>
+        /// <param name="propertyName">項目名</param>
+        /// <param name="value">設定する値</param>
+        private static void SetInt(GlyphStyleData style, string propertyName, int value)
+        {
+            // ローカル変数は関数の先頭で宣言する
+            SerializedObject serialized;   // Inspector と同じ方法で値を書き換えるための入れ物
+
+            serialized = new SerializedObject(style);
+            serialized.FindProperty(propertyName).intValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
