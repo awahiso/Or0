@@ -37,6 +37,9 @@ namespace OrZero
             new RankThreshold("D", 0),
         };
 
+        // ===== ランキング（SPEC のランキングの節） =====
+        [SerializeField, Min(1)] private int rankingSize = 5;   // ランキングに残す件数（件）
+
         /// <summary>同じ答えを続けてよい最大回数（回）</summary>
         public int MaxSameAnswerStreak => maxSameAnswerStreak;
 
@@ -66,6 +69,9 @@ namespace OrZero
 
         /// <summary>ランクの境目（ランク名と最低スコア）</summary>
         public IReadOnlyList<RankThreshold> RankThresholds => rankThresholds;
+
+        /// <summary>ランキングに残す件数（件）</summary>
+        public int RankingSize => rankingSize;
 
         /// <summary>
         /// Inspector で値を変えたときに、組み合わせのおかしな設定を警告する（エディタでのみ呼ばれる）
