@@ -11,7 +11,8 @@ namespace OrZero
     /// いまは Playing（出題・回答）・Miss（不正解）・TimeUp（時間切れ）・Result（リザルト）を使う。
     /// 回答はボタン（マウス）とキーボード（0キー／テンキーの0＝数字、Oキー＝英字）の両方で受け付ける。
     /// 出題の見た目は、起動時に Resources から読み込んだスタイルのうち、今の正解数で解禁されているものから毎問ランダムに選ぶ（SPEC §1.4）。
-    /// 1プレイが終わったら、スコアをランキング（上位5件）に記録して保存し（T14）、リザルト画面を出す（T13）
+    /// 1プレイが終わったら、スコアをランキング（上位5件）に記録して保存し（T14）、リザルト画面を出す（T13）。
+    /// リザルトの RETRY で Game シーンを読み直し、TITLE でタイトル画面へ戻る（T15）
     /// </summary>
     public class GameFlowController : MonoBehaviour
     {
@@ -56,7 +57,7 @@ namespace OrZero
         }
 
         /// <summary>
-        /// 有効になったとき、回答ボタンと RETRY ボタンの通知を受け取り始める
+        /// 有効になったとき、回答ボタンと RETRY・TITLE ボタンの通知を受け取り始める
         /// </summary>
         private void OnEnable()
         {
@@ -68,10 +69,11 @@ namespace OrZero
                 answerButtons[i].Pressed += HandleAnswerPressed;
             }
             resultView.RetryPressed += HandleRetryPressed;
+            resultView.TitlePressed += HandleTitlePressed;
         }
 
         /// <summary>
-        /// 無効になったとき、回答ボタンと RETRY ボタンの通知の受け取りをやめる
+        /// 無効になったとき、回答ボタンと RETRY・TITLE ボタンの通知の受け取りをやめる
         /// </summary>
         private void OnDisable()
         {
@@ -83,6 +85,7 @@ namespace OrZero
                 answerButtons[i].Pressed -= HandleAnswerPressed;
             }
             resultView.RetryPressed -= HandleRetryPressed;
+            resultView.TitlePressed -= HandleTitlePressed;
         }
 
         /// <summary>
@@ -173,6 +176,19 @@ namespace OrZero
             }
 
             Retry();
+        }
+
+        /// <summary>
+        /// リザルト画面の TITLE ボタンが押されたときの処理（Result 中だけ受け付ける）。タイトル画面へ戻る
+        /// </summary>
+        private void HandleTitlePressed()
+        {
+            if (currentState != GameState.Result)
+            {
+                return;
+            }
+
+            SceneManager.LoadScene(SceneNames.Title);
         }
 
         /// <summary>

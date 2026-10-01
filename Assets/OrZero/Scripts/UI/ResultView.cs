@@ -9,8 +9,7 @@ namespace OrZero
     /// <summary>
     /// リザルト画面（SPEC のリザルト・ランキングの節）。
     /// 見出し（GAME OVER／TIME UP）・SCORE・正解数・RANK、GAME OVER のときの「あなたの回答／正解」、NEW RECORD、
-    /// ランキング（上位5件。今回の記録の行は色を変える）を表示し、RETRY ボタンが押されたら通知する。
-    /// TITLE ボタンは、タイトル画面（T15）ができるまで GameObject ごと無効にしておく（このクラスでは扱わない）。
+    /// ランキング（上位5件。今回の記録の行は色を変える）を表示し、RETRY・TITLE ボタンが押されたら通知する。
     /// 表示する文字の組み立ては static 関数に分けてあり、EditMode テストで確かめられる
     /// </summary>
     public class ResultView : MonoBehaviour
@@ -21,30 +20,34 @@ namespace OrZero
         [SerializeField] private TMP_Text answerText;           // GAME OVER のときの「あなたの回答／正解」（TIME UP では空にする）
         [SerializeField] private TMP_Text scoreText;            // SCORE の数値
         [SerializeField] private TMP_Text correctCountText;     // 正解数
-        [SerializeField] private TMP_Text tauntText;
         [SerializeField] private TMP_Text rankText;             // RANK（S など）
         [SerializeField] private GameObject newRecordMark;      // NEW RECORD の表示（1位に入ったときだけ出す）
         [SerializeField] private TMP_Text[] rankingRows;        // ランキングの各行（上から1位・2位…の順に並べる）
         [SerializeField] private Button retryButton;            // RETRY ボタン
+        [SerializeField] private Button titleButton;            // TITLE ボタン
 
         // ===== 見た目の設定（Inspector で調整） =====
         [SerializeField] private Color rankingNormalColor = new Color32(0x1F, 0x20, 0x26, 0xFF);      // ランキングの行の文字色（SPEC §1.5 の文字の色）
         [SerializeField] private Color rankingHighlightColor = new Color32(0xFF, 0x4F, 0x9A, 0xFF);   // 今回の記録の行の文字色（SPEC §1.5 のピンク）
 
-        private readonly System.Random random = new System.Random();
-        private string previousTaunt = "";   // 直前に出した煽り（連続で同じ文言を避ける）
-
         /// <summary>RETRY ボタンが押されたときに呼ばれる</summary>
         public event Action RetryPressed;
 
+        /// <summary>TITLE ボタンが押されたときに呼ばれる</summary>
+        public event Action TitlePressed;
+
         /// <summary>
-        /// RETRY ボタンが押されたら通知するように登録する
+        /// RETRY・TITLE ボタンが押されたら通知するように登録する
         /// </summary>
         private void Awake()
         {
             if (retryButton != null)
             {
                 retryButton.onClick.AddListener(HandleRetryClicked);
+            }
+            if (titleButton != null)
+            {
+                titleButton.onClick.AddListener(HandleTitleClicked);
             }
         }
 
@@ -56,6 +59,10 @@ namespace OrZero
             if (retryButton != null)
             {
                 retryButton.onClick.RemoveListener(HandleRetryClicked);
+            }
+            if (titleButton != null)
+            {
+                titleButton.onClick.RemoveListener(HandleTitleClicked);
             }
         }
 
@@ -70,9 +77,9 @@ namespace OrZero
 
             if (panel == null || headingText == null || answerText == null || scoreText == null
                 || correctCountText == null || rankText == null || newRecordMark == null || retryButton == null
-                || rankingRows == null || rankingRows.Length == 0 || tauntText == null)
+                || titleButton == null || rankingRows == null || rankingRows.Length == 0)
             {
-                Debug.LogError("ResultView: panel・各テキスト・newRecordMark・rankingRows・retryButton を Inspector で設定してください", this);
+                Debug.LogError("ResultView: panel・各テキスト・newRecordMark・rankingRows・retryButton・titleButton を Inspector で設定してください", this);
                 return false;
             }
             for (i = 0; i < rankingRows.Length; i++)
@@ -128,16 +135,6 @@ namespace OrZero
                     rankingRows[i].text = FormatEmptyRankingRow(i + 1);
                 }
                 rankingRows[i].color = i == data.RankingPosition ? rankingHighlightColor : rankingNormalColor;
-            }
-
-            if (data.EndReason == GameEndReason.Miss)
-            {
-                previousTaunt = TauntSelector.ChooseTaunt(data.CorrectAnswer, data.CorrectCount, previousTaunt, random);
-                tauntText.text = previousTaunt;
-            }
-            else
-            {
-                tauntText.text = "";
             }
 
             panel.SetActive(true);
@@ -202,6 +199,14 @@ namespace OrZero
         private void HandleRetryClicked()
         {
             RetryPressed?.Invoke();
+        }
+
+        /// <summary>
+        /// TITLE ボタンが押されたときに、ボタンから呼ばれる
+        /// </summary>
+        private void HandleTitleClicked()
+        {
+            TitlePressed?.Invoke();
         }
     }
 }
