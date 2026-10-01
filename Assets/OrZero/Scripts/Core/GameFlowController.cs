@@ -22,7 +22,12 @@ namespace OrZero
         [SerializeField] private AnswerButton[] answerButtons;   // 回答ボタン（英字用と数字用を1つずつ）
         [SerializeField] private HudView hudView;                // 画面上部の SCORE・TIME・COMBO
         [SerializeField] private string styleResourcesFolder = "GlyphStyles";   // スタイルを置く Resources の中のフォルダ名（Assets/OrZero/Resources/GlyphStyles）
-        [SerializeField] private ResultView resultView;          // リザルト画面
+        [SerializeField] private ResultView resultView;
+        [SerializeField] private AudioSource BGM_mainGame;       // メインゲームのBGM
+        [SerializeField] private AudioSource BGM_result;         // リザルトのBGM
+        [SerializeField] private AudioClip SE_correct;           // 正解時のSE
+        [SerializeField] private AudioClip SE_Incorrect;         // 不正解時のSE
+        private AudioSource myAudio;// リザルト画面
 
         // ===== 実行時の状態（確認用に Inspector へ表示） =====
         [SerializeField] private GameState currentState = GameState.Playing;      // 現在のステート
@@ -93,6 +98,9 @@ namespace OrZero
         /// </summary>
         private void Start()
         {
+            myAudio = GetComponent<AudioSource>();
+            myAudio.Play();
+
             // ローカル変数は関数の先頭で宣言する
             System.Random random;   // 答え・スタイル・大きさ・装飾の抽選に使う乱数
 
@@ -258,8 +266,8 @@ namespace OrZero
             }
 
             // キーは物理的な位置で判定される（日本語配列でも 0 と O の位置は同じ）
-            zeroPressed = keyboard.digit0Key.wasPressedThisFrame || keyboard.numpad0Key.wasPressedThisFrame;
-            letterPressed = keyboard.oKey.wasPressedThisFrame;
+            zeroPressed = keyboard.digit0Key.wasPressedThisFrame || keyboard.numpad0Key.wasPressedThisFrame || keyboard.leftArrowKey.wasPressedThisFrame;
+            letterPressed = keyboard.oKey.wasPressedThisFrame || keyboard.rightArrowKey.wasPressedThisFrame;
 
             // どちらも押されていない、または両方押されたときは回答にしない
             if (zeroPressed == letterPressed)
@@ -332,6 +340,9 @@ namespace OrZero
             {
                 RankingStorage.Save(ranking);
             }
+
+            BGM_mainGame.Stop();
+            BGM_result.Play();
         }
 
         /// <summary>
@@ -378,11 +389,13 @@ namespace OrZero
             if (pressedAnswer == currentAnswer)
             {
                 HandleCorrect(questionElapsedSeconds);
+                myAudio.PlayOneShot(SE_correct);
             }
             else
             {
                 // 不正解: 1回で即ゲームオーバー（押した答えはリザルトで「あなたの回答」として出す）
                 wrongAnswer = pressedAnswer;
+                myAudio.PlayOneShot(SE_Incorrect);
                 ChangeState(GameState.Miss);
             }
         }

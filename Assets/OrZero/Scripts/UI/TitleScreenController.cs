@@ -16,8 +16,8 @@ namespace OrZero
     public class TitleScreenController : MonoBehaviour
     {
         // ===== 調整値・参照（Inspector で設定） =====
-        [SerializeField] private GameBalanceData balanceData;   // ゲーム全体の調整値（ランキングに残す件数を読むのに使う）
-        [SerializeField] private TMP_Text bestScoreText;        // ベストスコアの表示
+        //[SerializeField] private GameBalanceData balanceData;   // ゲーム全体の調整値（ランキングに残す件数を読むのに使う）
+        //[SerializeField] private TMP_Text bestScoreText;        // ベストスコアの表示
         [SerializeField] private Button startButton;            // START ボタン
         [SerializeField] private Button quitButton;             // 終了ボタン（ビルドではアプリを閉じる。Editor では Console に出すだけ）
 
@@ -26,7 +26,7 @@ namespace OrZero
         /// </summary>
         private void Awake()
         {
-            if (balanceData == null || bestScoreText == null || startButton == null || quitButton == null)
+            if (startButton == null || quitButton == null)
             {
                 Debug.LogError("TitleScreenController: balanceData・bestScoreText・startButton・quitButton を Inspector で設定してください", this);
                 enabled = false;
@@ -57,7 +57,7 @@ namespace OrZero
         /// </summary>
         private void Start()
         {
-            bestScoreText.text = FormatBestScore(RankingStorage.Load(balanceData.RankingSize).BestScore);
+            //bestScoreText.text = FormatBestScore(RankingStorage.Load(balanceData.RankingSize).BestScore);
         }
 
         /// <summary>
