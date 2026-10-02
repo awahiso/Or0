@@ -1068,6 +1068,24 @@ MonoBehaviour:
   animator: {fileID: 0}
   walkBoolName: 
   hideWhileWaiting: 1
+--- !u!114 &1148886842
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1148886838}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5fea29bb7c508c244a1f805a5fd3fc4d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Outline
+  outlineMode: 0
+  outlineColor: {r: 0, g: 0, b: 0, a: 1}
+  outlineWidth: 4
+  precomputeOutline: 0
+  bakeKeys: []
+  bakeValues: []
 --- !u!1 &1161504440
 GameObject:
   m_ObjectHideFlags: 0
@@ -1246,6 +1264,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 88aaef2d9bd49bb4184df63635868570, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1148886841}
+    - targetCorrespondingSourceObject: {fileID: 919132149155446097, guid: 88aaef2d9bd49bb4184df63635868570, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1148886842}
   m_SourcePrefab: {fileID: 100100000, guid: 88aaef2d9bd49bb4184df63635868570, type: 3}
 --- !u!1 &2004667272
 GameObject:
