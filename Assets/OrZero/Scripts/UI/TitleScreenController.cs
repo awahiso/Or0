@@ -57,7 +57,7 @@ namespace OrZero
         /// </summary>
         private void Start()
         {
-            //bestScoreText.text = FormatBestScore(RankingStorage.Load(balanceData.RankingSize).BestScore);
+            //bestScoreText.text = FormatBestScore(RankingStorage.Load(balanceData.RankingSize).BestScore); balanceData == null || bestScoreText == null || 
         }
 
         /// <summary>

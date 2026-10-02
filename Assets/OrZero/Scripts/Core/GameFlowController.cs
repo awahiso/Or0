@@ -389,13 +389,13 @@ namespace OrZero
             if (pressedAnswer == currentAnswer)
             {
                 HandleCorrect(questionElapsedSeconds);
-                myAudio.PlayOneShot(SE_correct);
+                BGM_result.PlayOneShot(SE_correct);
             }
             else
             {
                 // 不正解: 1回で即ゲームオーバー（押した答えはリザルトで「あなたの回答」として出す）
                 wrongAnswer = pressedAnswer;
-                myAudio.PlayOneShot(SE_Incorrect);
+                BGM_result.PlayOneShot(SE_Incorrect);
                 ChangeState(GameState.Miss);
             }
         }

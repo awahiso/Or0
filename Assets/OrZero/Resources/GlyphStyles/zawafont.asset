@@ -1,0 +1,30 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3321d1ddc3bd7fd41a2b52e297104aa0, type: 3}
+  m_Name: zawafont
+  m_EditorClassIdentifier: OrZero.Runtime::OrZero.GlyphStyleData
+  displayName: 
+  fontAsset: {fileID: 11400000, guid: 7432474ce31c48146b28d72974e6ef2c, type: 2}
+  letterText: O
+  digitText: 0
+  weight: 1
+  unlockCorrectCount: 5
+  minScale: 1
+  maxScale: 1
+  faceDilate: 0
+  useItalic: 0
+  outlineWidth: 0
+  outlineColor: {r: 1, g: 1, b: 1, a: 1}
+  faceColor: {r: 0.12156863, g: 0.1254902, b: 0.14901961, a: 1}
+  decorationDotCount: 0
+  decorationLineCount: 0
+  ghostAlpha: 0
