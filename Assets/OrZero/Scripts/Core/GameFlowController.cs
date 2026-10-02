@@ -205,6 +205,7 @@ namespace OrZero
         /// </summary>
         private void Retry()
         {
+            correctCount = 0;
             SceneManager.LoadScene(SceneNames.Game);
         }
 
@@ -395,7 +396,7 @@ namespace OrZero
             {
                 // 不正解: 1回で即ゲームオーバー（押した答えはリザルトで「あなたの回答」として出す）
                 wrongAnswer = pressedAnswer;
-                BGM_result.PlayOneShot(SE_Incorrect);
+                BGM_mainGame.PlayOneShot(SE_Incorrect);
                 ChangeState(GameState.Miss);
             }
         }
